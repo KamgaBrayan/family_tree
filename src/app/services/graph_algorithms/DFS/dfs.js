@@ -477,6 +477,7 @@ class FamilyTree {
     try {
       // Dans un environnement Node.js
       if (typeof require !== 'undefined') {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const fs = require('fs');
         const jsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
         return new FamilyTree(jsonData);
