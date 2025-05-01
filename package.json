@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "family_tree": "file:",
     "lucide-react": "^0.503.0",
     "next": "15.2.4",
     "react": "^19.0.0",

@@ -4,37 +4,56 @@
 export interface Person {
   id: string;
   first_name: string;
-  middle_name?: string | null;
+  middle_name: string | null;
   last_name: string;
-  maiden_name?: string | null;
-  date_of_birth?: string;
-  date_of_death?: string | null;
-  is_deceased?: boolean;
-  sex?: 'M' | 'F' | string;
-  blood_type?: string;
-  nationality?: string;
-  ethnicity?: string;
-  place_of_birth?: string;
-  cause_of_death?: string | null;
-  height_cm?: number;
-  eye_color?: string;
-  hair_color?: string;
-  email?: string | null;
-  phone?: string | null;
-  address?: string | null;
-  occupation?: string | null;
-  education?: string;
-  religion?: string;
-  notes?: string | null;
-  legacy_bucket_id?: string | null;
-  father_id?: string | null;
-  mother_id?: string | null;
+  maiden_name: string | null;
+  date_of_birth: string | null;
+  sex: string;
+  blood_type: string | null;
+  nationality: string | null;
+  ethnicity: string | null;
+  place_of_birth: string | null;
+  date_of_death: string | null;
+  is_deceased: boolean;
+  cause_of_death: string | null;
+  height_cm: number | null;
+  eye_color: string | null;
+  hair_color: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  occupation: string | null;
+  education: string | null;
+  religion: string | null;
+  notes: string | null;
+  legacy_bucket_id: string | null;
+  father_id: string | null;
+  mother_id: string | null;
+  profile_image_url?: string; // Optional profile image URL
 }
 
 // Family tree data structure
 export interface FamilyTreeData {
   people: Person[];
 }
+
+export type RelationshipType = 
+  | 'self' 
+  | 'father' 
+  | 'mother' 
+  | 'child' 
+  | 'sibling' 
+  | 'spouse' 
+  | 'grandparent' 
+  | 'grandchild' 
+  | 'cousin' 
+  | 'aunt' 
+  | 'uncle' 
+  | 'niece' 
+  | 'nephew'
+  | 'extended'
+  | 'unknown';
+
 
 // Interface for person with additional relationship information
 export interface PersonWithRelationship extends Person {
@@ -49,6 +68,11 @@ export interface Relationship {
   children: Person[];
   parents: Person[];
   siblings: Person[];
+}
+
+export interface RelationshipPath {
+  path: string[];
+  description: string;
 }
 
 // Interface for algorithm results
