@@ -221,10 +221,9 @@ function getPathDetails(path, people) {
 /**
  * Analyze the specific type of relationship between two people
  * @param {Array} path - Array of node IDs in the relationship path
- * @param {Array} people - Array of person objects
  * @returns {String} Specific relationship type
  */
-function analyzeRelationshipType(path, people) {
+function analyzeRelationshipType(path) {
     // Implementation would detect specific relationships like
     // "grand-père paternel", "cousin germain", etc.
     // This is a placeholder for a more detailed implementation

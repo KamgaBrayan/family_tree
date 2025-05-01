@@ -1,4 +1,4 @@
-import { Person, Relation, PartitionResult } from './types';
+import { Person, Relation, PartitionResult } from '../../../../types/types';
 
 export class UnionFind {
     private parent: Record<string, string>; // Dictionnaire qui stocke la racine de chaque élément.
