@@ -30,16 +30,22 @@ const FamilyTreeGoJS: React.FC<FamilyTreeGoJSProps> = ({
     // Créer un nouveau diagramme
     const diagram = new go.Diagram(diagramDivId, {
       initialContentAlignment: go.Spot.Center,
+      // Utiliser un layout simple mais efficace pour organiser les nœuds selon leur relation
       layout: $(go.TreeLayout, {
-        angle: 90,
-        layerSpacing: 50,
-        nodeSpacing: 30,
+        angle: 90,  // de haut en bas
+        nodeSpacing: 40,  // espace horizontal entre les nœuds
+        layerSpacing: 80,  // espace vertical entre les générations
+        arrangement: go.TreeLayout.ArrangementFixedRoots,
+        // Positionner les parents au-dessus, les enfants en-dessous
+        // et les frères/sœurs à gauche et à droite
+        isRealtime: false,
+        isOngoing: false
       }),
       "undoManager.isEnabled": true,
       allowZoom: true,
       allowHorizontalScroll: true,
       allowVerticalScroll: true,
-      padding: 20,
+      padding: 40,
     });
 
     // Node template
@@ -157,30 +163,96 @@ const FamilyTreeGoJS: React.FC<FamilyTreeGoJSProps> = ({
       )
     );
 
-    // Link template
-    diagram.linkTemplate = $(
-      go.Link,
-      {
-        routing: go.Link.Orthogonal,
-        corner: 10,
-        curviness: 10,
-        relinkableFrom: false,
-        relinkableTo: false,
-        reshapable: false,
-        resegmentable: false,
-        toShortLength: 4
-      },
-      $(go.Shape, { 
-        stroke: "#A5B4FC", 
-        strokeWidth: 2,
-        strokeDashArray: null
-      }),
-      $(go.Shape, { 
-        toArrow: "Standard", 
-        fill: "#A5B4FC", 
-        stroke: "#A5B4FC",
-        scale: 0.8
-      })
+    // Link template avec différents styles selon le type de relation
+    diagram.linkTemplateMap.add("",  // Template par défaut
+      $(go.Link,
+        {
+          routing: go.Link.Orthogonal,
+          corner: 10,
+          curviness: 10,
+          relinkableFrom: false,
+          relinkableTo: false,
+          reshapable: false,
+          resegmentable: false,
+          toShortLength: 4
+        },
+        $(go.Shape, { 
+          stroke: "#A5B4FC", 
+          strokeWidth: 2,
+          strokeDashArray: null
+        }, 
+        // Couleur différente selon la génération
+        new go.Binding("stroke", "", (d) => {
+          // Obtenir la génération du lien en fonction de la relation
+          const rel = d.relationship || '';
+          const gen = Math.abs(d.generation || 0);
+          
+          // Couleurs par génération
+          const colors = [
+            "#3B82F6", // Bleu - Génération 0 (personne centrale)
+            "#10B981", // Vert - Génération 1 (parents/enfants)
+            "#F59E0B", // Jaune - Génération 2 (grands-parents/petits-enfants)
+            "#EF4444", // Rouge - Génération 3
+            "#8B5CF6"  // Violet - Génération 4+
+          ];
+          
+          // Couleurs spéciales pour certaines relations
+          if (rel === "spouse") return "#EC4899"; // Rose pour les conjoints
+          if (rel === "sibling") return "#6366F1"; // Indigo pour les frères/sœurs
+          
+          // Couleur basée sur la génération
+          return colors[Math.min(gen, colors.length - 1)];
+        })),
+        $(go.Shape, { 
+          toArrow: "Standard", 
+          fill: "#3B82F6", 
+          stroke: "#3B82F6",
+          scale: 0.8
+        },
+        // Couleur de la flèche selon la génération
+        new go.Binding("fill", "", (d) => {
+          // Obtenir la génération du lien en fonction de la relation
+          const rel = d.relationship || '';
+          const gen = Math.abs(d.generation || 0);
+          
+          // Couleurs par génération
+          const colors = [
+            "#3B82F6", // Bleu - Génération 0 (personne centrale)
+            "#10B981", // Vert - Génération 1 (parents/enfants)
+            "#F59E0B", // Jaune - Génération 2 (grands-parents/petits-enfants)
+            "#EF4444", // Rouge - Génération 3
+            "#8B5CF6"  // Violet - Génération 4+
+          ];
+          
+          // Couleurs spéciales pour certaines relations
+          if (rel === "spouse") return "#EC4899"; // Rose pour les conjoints
+          if (rel === "sibling") return "#6366F1"; // Indigo pour les frères/sœurs
+          
+          // Couleur basée sur la génération
+          return colors[Math.min(gen, colors.length - 1)];
+        }),
+        new go.Binding("stroke", "", (d) => {
+          // Obtenir la génération du lien en fonction de la relation
+          const rel = d.relationship || '';
+          const gen = Math.abs(d.generation || 0);
+          
+          // Couleurs par génération
+          const colors = [
+            "#3B82F6", // Bleu - Génération 0 (personne centrale)
+            "#10B981", // Vert - Génération 1 (parents/enfants)
+            "#F59E0B", // Jaune - Génération 2 (grands-parents/petits-enfants)
+            "#EF4444", // Rouge - Génération 3
+            "#8B5CF6"  // Violet - Génération 4+
+          ];
+          
+          // Couleurs spéciales pour certaines relations
+          if (rel === "spouse") return "#EC4899"; // Rose pour les conjoints
+          if (rel === "sibling") return "#6366F1"; // Indigo pour les frères/sœurs
+          
+          // Couleur basée sur la génération
+          return colors[Math.min(gen, colors.length - 1)];
+        }))
+      )
     );
 
     // Responsive resize
@@ -260,43 +332,86 @@ const FamilyTreeGoJS: React.FC<FamilyTreeGoJSProps> = ({
     try {
       console.log(`Updating diagram with ${familyMembers.length} family members`);
       
-      // Filtrer pour s'assurer que seuls les membres liés à la personne sélectionnée sont affichés
-      const relevantMembers = selectedPerson 
-        ? familyMembers.filter(member => 
-            // Inclure la personne sélectionnée et ses relations directes
-            member.id === selectedPerson.id || 
-            member.father_id === selectedPerson.id || 
-            member.mother_id === selectedPerson.id ||
-            (selectedPerson.father_id && member.id === selectedPerson.father_id) ||
-            (selectedPerson.mother_id && member.id === selectedPerson.mother_id)
-          )
-        : familyMembers;
+      // Utiliser directement les résultats de l'algorithme BFS sans filtrage supplémentaire
+      // familyMembers contient déjà les membres de la famille jusqu'à la génération spécifiée
+      const relevantMembers = familyMembers;
       
-      // Préparer les données pour le modèle
+      console.log(`Displaying ${relevantMembers.length} family members across multiple generations`);
+      
+      // Préparer les données des nœuds pour le modèle
       const nodeDataArray = relevantMembers.map((person) => {
-        let parentKey: string | undefined;
-        
-        // Définir la relation parent-enfant pour l'arbre
-        if (person.father_id && relevantMembers.some(m => m.id === person.father_id)) {
-          parentKey = person.father_id;
-        } else if (person.mother_id && relevantMembers.some(m => m.id === person.mother_id)) {
-          parentKey = person.mother_id;
-        }
-        
-        // Si rootPerson, force la racine à ne pas avoir de parent
-        if (rootPerson && person.id === rootPerson.id) {
-          parentKey = undefined;
-        }
-        
         return {
           ...person,
           key: person.id,
-          ...(parentKey ? { parent: parentKey } : {})
+          // Ajouter des propriétés pour l'affichage
+          isRoot: rootPerson && person.id === rootPerson.id
         };
       });
       
-      // Mettre à jour le modèle de façon sécurisée
-      diagram.model = new go.TreeModel(nodeDataArray);
+      // Préparer les données des liens pour le modèle
+      const linkDataArray: Array<{ from: string; to: string; relationship: string }> = [];
+      
+      // Créer les liens entre les nœuds
+      for (const person of relevantMembers) {
+        if (person.father_id && relevantMembers.some(p => p.id === person.father_id)) {
+          linkDataArray.push({
+            from: person.father_id,
+            to: person.id,
+            relationship: 'parent'
+          });
+        }
+        
+        if (person.mother_id && relevantMembers.some(p => p.id === person.mother_id)) {
+          linkDataArray.push({
+            from: person.mother_id,
+            to: person.id,
+            relationship: 'parent'
+          });
+        }
+        
+        // Ajouter des liens entre conjoints (basé sur spouse_id)
+        if (person.spouse_id && relevantMembers.some(p => p.id === person.spouse_id)) {
+          // Vérifier si le lien n'existe pas déjà dans l'autre sens
+          const existingLink = linkDataArray.some(
+            link => link.relationship === 'spouse' && 
+                   ((link.from === person.id && link.to === person.spouse_id) ||
+                    (link.from === person.spouse_id && link.to === person.id))
+          );
+          
+          if (!existingLink) {
+            linkDataArray.push({
+              from: person.id,
+              to: person.spouse_id,
+              relationship: 'spouse'
+            });
+          }
+        }
+        
+        // Ajouter des liens entre frères et sœurs
+        // Uniquement pour les frères et sœurs de la personne sélectionnée pour éviter l'encombrement
+        if (selectedPerson && 
+            ((person.father_id && person.father_id === selectedPerson.father_id) || 
+             (person.mother_id && person.mother_id === selectedPerson.mother_id)) &&
+            person.id !== selectedPerson.id) {
+          linkDataArray.push({
+            from: selectedPerson.id,
+            to: person.id,
+            relationship: 'sibling'
+          });
+        }
+      }
+      
+      console.log(`Created ${linkDataArray.length} links between nodes`);
+      
+      // Mettre à jour le modèle avec un GraphLinksModel au lieu d'un TreeModel
+      diagram.model = new go.GraphLinksModel({
+        nodeDataArray: nodeDataArray,
+        linkDataArray: linkDataArray,
+        // Spécifier les propriétés de clé pour les nœuds et les liens
+        nodeKeyProperty: "key",
+        linkFromKeyProperty: "from",
+        linkToKeyProperty: "to"
+      });
       
       // Sélectionner la personne si sélectionnée
       if (selectedPerson) {

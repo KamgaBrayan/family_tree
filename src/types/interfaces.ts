@@ -61,6 +61,7 @@ export interface PersonWithRelationship extends Person {
   relationship?: string;
   parentId?: string;
   childId?: string;
+  spouse_id?: string; // ID du conjoint pour les liens matrimoniaux
 }
 
 // Interface for relationship information

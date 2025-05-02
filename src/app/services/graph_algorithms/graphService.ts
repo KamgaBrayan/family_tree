@@ -14,91 +14,116 @@ export function bfs(
 ): PersonWithRelationship[] {
   if (!rootPerson || !familyData) return [];
 
-  // Map pour stocker la génération de chaque personne
-  const generationMap = new Map<string, number>();
-  // Map pour stocker la relation de chaque personne
-  const relationshipMap = new Map<string, string>();
-  // Ensemble pour suivre les personnes visitées
-  const visited = new Set<string>();
-  // File pour le BFS
-  const queue: { person: Person; generation: number }[] = [];
   // Résultat final
   const result: PersonWithRelationship[] = [];
+  // Ensemble pour suivre les personnes déjà ajoutées
+  const added = new Set<string>();
 
-  // Ajouter la personne racine
-  queue.push({ person: rootPerson, generation: 0 });
-  generationMap.set(rootPerson.id, 0);
-  relationshipMap.set(rootPerson.id, 'self');
-  visited.add(rootPerson.id);
+  // 1. Ajouter la personne sélectionnée
+  const personWithRelation: PersonWithRelationship = {
+    ...rootPerson,
+    generation: 0,
+    relationship: 'self'
+  };
+  result.push(personWithRelation);
+  added.add(rootPerson.id);
 
-  // Parcours BFS
-  while (queue.length > 0) {
-    const { person, generation } = queue.shift()!;
-
-    // Si on a atteint le nombre maximum de générations, on s'arrête pour cette branche
-    if (Math.abs(generation) > maxGenerations) continue;
-
-    // Ajouter la personne au résultat
-    const personWithRelation: PersonWithRelationship = {
-      ...person,
-      generation,
-      relationship: relationshipMap.get(person.id) || 'unknown'
-    };
-    result.push(personWithRelation);
-
-    // Explorer les parents
-    if (person.father_id) {
-      const father = familyData.people.find(p => p.id === person.father_id);
-      if (father && !visited.has(father.id)) {
-        queue.push({ person: father, generation: generation - 1 });
-        generationMap.set(father.id, generation - 1);
-        relationshipMap.set(father.id, generation === 0 ? 'father' : 'ancestor');
-        visited.add(father.id);
-      }
+  // 2. Ajouter les parents
+  if (rootPerson.father_id) {
+    const father = familyData.people.find(p => p.id === rootPerson.father_id);
+    if (father && !added.has(father.id)) {
+      result.push({
+        ...father,
+        generation: -1,
+        relationship: 'father',
+        childId: rootPerson.id
+      });
+      added.add(father.id);
     }
+  }
 
-    if (person.mother_id) {
-      const mother = familyData.people.find(p => p.id === person.mother_id);
-      if (mother && !visited.has(mother.id)) {
-        queue.push({ person: mother, generation: generation - 1 });
-        generationMap.set(mother.id, generation - 1);
-        relationshipMap.set(mother.id, generation === 0 ? 'mother' : 'ancestor');
-        visited.add(mother.id);
-      }
+  if (rootPerson.mother_id) {
+    const mother = familyData.people.find(p => p.id === rootPerson.mother_id);
+    if (mother && !added.has(mother.id)) {
+      result.push({
+        ...mother,
+        generation: -1,
+        relationship: 'mother',
+        childId: rootPerson.id
+      });
+      added.add(mother.id);
     }
+  }
 
-    // Explorer les enfants
-    const children = familyData.people.filter(
-      p => p.father_id === person.id || p.mother_id === person.id
+  // 3. Ajouter les enfants
+  const children = familyData.people.filter(
+    p => p.father_id === rootPerson.id || p.mother_id === rootPerson.id
+  );
+  
+  for (const child of children) {
+    if (!added.has(child.id)) {
+      result.push({
+        ...child,
+        generation: 1,
+        relationship: 'child',
+        parentId: rootPerson.id
+      });
+      added.add(child.id);
+    }
+  }
+
+  // 4. Ajouter les frères et sœurs (enfants des parents)
+  if (rootPerson.father_id || rootPerson.mother_id) {
+    const siblings = familyData.people.filter(
+      p => p.id !== rootPerson.id && 
+        ((rootPerson.father_id && p.father_id === rootPerson.father_id) || 
+         (rootPerson.mother_id && p.mother_id === rootPerson.mother_id))
     );
     
-    for (const child of children) {
-      if (!visited.has(child.id)) {
-        queue.push({ person: child, generation: generation + 1 });
-        generationMap.set(child.id, generation + 1);
-        relationshipMap.set(child.id, generation === 0 ? 'child' : 'descendant');
-        visited.add(child.id);
-      }
-    }
-
-    // Explorer les frères et sœurs (uniquement pour la personne racine ou ses descendants directs)
-    if (generation >= 0 && (person.father_id || person.mother_id)) {
-      const siblings = familyData.people.filter(
-        p => p.id !== person.id && 
-          ((person.father_id && p.father_id === person.father_id) || 
-           (person.mother_id && p.mother_id === person.mother_id))
-      );
-      
-      for (const sibling of siblings) {
-        if (!visited.has(sibling.id)) {
-          queue.push({ person: sibling, generation });
-          generationMap.set(sibling.id, generation);
-          relationshipMap.set(sibling.id, 'sibling');
-          visited.add(sibling.id);
-        }
+    for (const sibling of siblings) {
+      if (!added.has(sibling.id)) {
+        result.push({
+          ...sibling,
+          generation: 0,
+          relationship: 'sibling'
+        });
+        added.add(sibling.id);
       }
     }
   }
+
+  // 5. Trouver et ajouter le conjoint si disponible
+  const findSpouse = () => {
+    // Chercher parmi les personnes qui ont des enfants en commun avec la personne sélectionnée
+    const potentialSpouses = new Set<string>();
+    
+    // Pour chaque enfant, ajouter l'autre parent comme conjoint potentiel
+    for (const child of children) {
+      if (child.father_id === rootPerson.id && child.mother_id) {
+        potentialSpouses.add(child.mother_id);
+      } else if (child.mother_id === rootPerson.id && child.father_id) {
+        potentialSpouses.add(child.father_id);
+      }
+    }
+    
+    // Ajouter les conjoints trouvés
+    for (const spouseId of potentialSpouses) {
+      const spouse = familyData.people.find(p => p.id === spouseId);
+      if (spouse && !added.has(spouse.id)) {
+        result.push({
+          ...spouse,
+          generation: 0,
+          relationship: 'spouse',
+          spouse_id: rootPerson.id
+        });
+        // Ajouter la référence du conjoint à la personne sélectionnée
+        personWithRelation.spouse_id = spouse.id;
+        added.add(spouse.id);
+      }
+    }
+  };
+  
+  findSpouse();
 
   return result;
 }
