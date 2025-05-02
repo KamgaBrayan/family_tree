@@ -21,7 +21,7 @@ const PersonDetails: React.FC<PersonDetailsProps> = ({
   if (!selectedPerson || !familyData) return null;
 
   return (
-    <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-lg p-4 overflow-y-auto">
+    <div className="h-full w-80 bg-white shadow-lg p-4 overflow-y-auto">
       <div className="flex justify-between items-start mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Person Details</h2>
         <button

@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Person, FamilyTreeData, PersonWithRelationship } from '../types/interfaces';
 import Header from '../components/Header';
 import PersonDetails from '../components/PersonDetails';
-import VerticalTreeView from '../components/VerticalTreeView';
-import RadialTreeView from '../components/RadialTreeView';
-import { bfs } from '../app/services/graph_algorithms/BFS/bfs';
+import FamilyTreeGoJS from '../components/FamilyTreeGoJS';
+import RadialTreeGoJS from '../components/RadialTreeGoJS';
+import { bfs } from '../app/services/graph_algorithms/graphService';
 import { addProfileImagesToFamilyData } from '../Utils/addProfileImages';
 
 const InteractiveTreeVisualization: React.FC = () => {
@@ -39,19 +39,6 @@ const InteractiveTreeVisualization: React.FC = () => {
         
         setFamilyData(enhancedData);
         
-        // Find a root person (no parents)
-        const root = enhancedData.people.find(p => !p.father_id && !p.mother_id);
-        if (root) {
-          console.log(`Found root person: ${root.first_name} ${root.last_name}`);
-          setRootPerson(root);
-          setSelectedPerson(root);
-        } else if (enhancedData.people.length > 0) {
-          // Fallback to first person if no root is found
-          console.log('No root person found, using first person as root');
-          setRootPerson(enhancedData.people[0]);
-          setSelectedPerson(enhancedData.people[0]);
-        }
-        
         setLoading(false);
       } catch (error) {
         console.error("Error loading family data:", error);
@@ -62,15 +49,26 @@ const InteractiveTreeVisualization: React.FC = () => {
     loadData();
   }, []);
   
-  // Update family members when root or generations change
+  // Update family members when selected person or generations change
   useEffect(() => {
-    if (rootPerson && familyData) {
-      console.log(`Calculating family members for ${rootPerson.first_name} with ${maxGenerations} generations`);
-      const members = bfs(rootPerson, maxGenerations, familyData);
-      console.log(`Found ${members.length} family members`);
-      setFamilyMembers(members);
+    // Vérifier que toutes les dépendances nécessaires sont disponibles
+    if (!selectedPerson || !familyData) {
+      setFamilyMembers([]);
+      return;
     }
-  }, [rootPerson, maxGenerations, familyData]);
+    
+    console.log(`Calculating family members for ${selectedPerson.first_name} with ${maxGenerations} generations`);
+    
+    // Utiliser l'algorithme BFS pour trouver les membres de la famille
+    const members = bfs(selectedPerson, maxGenerations, familyData);
+    console.log(`Found ${members.length} family members`);
+    
+    // Définir la personne sélectionnée comme racine
+    setRootPerson(selectedPerson);
+    
+    // Mettre à jour les membres de la famille
+    setFamilyMembers(members);
+  }, [selectedPerson, maxGenerations, familyData]); // Dépendances stables
   
   // Search functionality
   useEffect(() => {
@@ -89,7 +87,9 @@ const InteractiveTreeVisualization: React.FC = () => {
   }, [searchQuery, familyData]);
   
   const handleSelectPerson = (person: Person): void => {
+    // Quand une personne est sélectionnée via la recherche ou un clic
     setSelectedPerson(person);
+    setRootPerson(person); // Définir cette personne comme racine
     setSearchQuery('');
     setSearchResults([]);
   };
@@ -126,32 +126,37 @@ const InteractiveTreeVisualization: React.FC = () => {
       {/* Main visualization area */}
       <main className="flex-1 w-full h-full overflow-hidden relative">
         {/* Tree visualization based on view mode */}
-        {viewMode === 'tree' ? (
-          <VerticalTreeView
-            familyMembers={familyMembers}
-            rootPerson={rootPerson}
-            selectedPerson={selectedPerson}
-            handleSelectPerson={handleSelectPerson}
-            zoomLevel={zoomLevel}
-          />
-        ) : (
-          <RadialTreeView
-            familyMembers={familyMembers}
-            rootPerson={rootPerson}
-            selectedPerson={selectedPerson}
-            handleSelectPerson={handleSelectPerson}
-          />
-        )}
-        
-        {/* Selected person details panel */}
-        {selectedPerson && familyData && (
-          <PersonDetails
-            selectedPerson={selectedPerson}
-            familyData={familyData}
-            setSelectedPerson={setSelectedPerson}
-            setRootPerson={setRootPerson}
-          />
-        )}
+        <div className="flex h-full">
+          <div className="flex-1 overflow-hidden">
+            {viewMode === 'tree' ? (
+              <FamilyTreeGoJS
+                familyMembers={familyMembers}
+                rootPerson={rootPerson}
+                selectedPerson={selectedPerson}
+                onSelectPerson={handleSelectPerson}
+              />
+            ) : (
+              <RadialTreeGoJS
+                familyMembers={familyMembers}
+                rootPerson={rootPerson}
+                selectedPerson={selectedPerson}
+                onSelectPerson={handleSelectPerson}
+              />
+            )}
+          </div>
+          
+          {/* Selected person details panel */}
+          <div className="w-80 h-full">
+            {selectedPerson && familyData && (
+              <PersonDetails
+                selectedPerson={selectedPerson}
+                familyData={familyData}
+                setSelectedPerson={setSelectedPerson}
+                setRootPerson={setRootPerson}
+              />
+            )}
+          </div>
+        </div>
       </main>
       
       {/* SVG Definitions for animations and patterns */}

@@ -37,9 +37,23 @@ const RadialTreeView: React.FC<RadialTreeViewProps> = ({
   const centerX = width / 2;
   const centerY = height / 2;
   
+  // Filtrer pour n'afficher que les relations pertinentes si une personne est sélectionnée
+  const relevantMembers = selectedPerson 
+    ? familyMembers.filter(member => 
+        // Inclure la personne sélectionnée et ses relations directes
+        member.id === selectedPerson.id || 
+        member.father_id === selectedPerson.id || 
+        member.mother_id === selectedPerson.id ||
+        (selectedPerson.father_id && member.id === selectedPerson.father_id) ||
+        (selectedPerson.mother_id && member.id === selectedPerson.mother_id)
+      )
+    : familyMembers;
+  
+  console.log(`Displaying ${relevantMembers.length} members in radial view`);
+  
   // Group by generation for radial layout
   const generationMap: GenerationsMap = {};
-  familyMembers.forEach(member => {
+  relevantMembers.forEach(member => {
     const gen = member.generation || 0;
     if (!generationMap[gen]) {
       generationMap[gen] = [];
@@ -68,13 +82,15 @@ const RadialTreeView: React.FC<RadialTreeViewProps> = ({
     });
   });
   
-  // Create links
+  // Create links - n'utiliser que les membres pertinents
   const links: { source: string, target: string }[] = [];
-  familyMembers.forEach(member => {
-    if (member.father_id && familyMembers.some(m => m.id === member.father_id)) {
+  relevantMembers.forEach(member => {
+    // Vérifier que le père existe dans les membres pertinents
+    if (member.father_id && relevantMembers.some(m => m.id === member.father_id)) {
       links.push({ source: member.father_id, target: member.id });
     }
-    if (member.mother_id && familyMembers.some(m => m.id === member.mother_id)) {
+    // Vérifier que la mère existe dans les membres pertinents
+    if (member.mother_id && relevantMembers.some(m => m.id === member.mother_id)) {
       links.push({ source: member.mother_id, target: member.id });
     }
   });
@@ -101,8 +117,8 @@ const RadialTreeView: React.FC<RadialTreeViewProps> = ({
         );
       })}
       
-      {/* Nodes */}
-      {familyMembers.map(person => {
+      {/* Nodes - n'afficher que les membres pertinents */}
+      {relevantMembers.map(person => {
         if (!positions[person.id]) return null;
         
         const pos = positions[person.id];
