@@ -1,103 +1,195 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import React, { useState, useEffect } from 'react';
+import { Person, FamilyTreeData, PersonWithRelationship } from '../types/interfaces';
+import Header from '../components/Header';
+import PersonDetails from '../components/PersonDetails';
+import VerticalTreeView from '../components/VerticalTreeView';
+import RadialTreeView from '../components/RadialTreeView';
+import { bfs } from '../app/services/graph_algorithms/BFS/bfs';
+import { addProfileImagesToFamilyData } from '../Utils/addProfileImages';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+const InteractiveTreeVisualization: React.FC = () => {
+  // State declarations
+  const [familyData, setFamilyData] = useState<FamilyTreeData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [rootPerson, setRootPerson] = useState<Person | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [viewMode, setViewMode] = useState<'tree' | 'radial'>('tree');
+  const [maxGenerations, setMaxGenerations] = useState<number>(3);
+  const [showDetails, setShowDetails] = useState<boolean>(true);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<Person[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<PersonWithRelationship[]>([]);
+  
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        console.log('Loading family data...');
+        
+        const response = await fetch('/family_tree.json');
+        const rawData: FamilyTreeData = await response.json();
+        
+        // Add profile images to the data
+        const enhancedData = addProfileImagesToFamilyData(rawData);
+        console.log(`Loaded ${enhancedData.people.length} people from family data`);
+        
+        setFamilyData(enhancedData);
+        
+        // Find a root person (no parents)
+        const root = enhancedData.people.find(p => !p.father_id && !p.mother_id);
+        if (root) {
+          console.log(`Found root person: ${root.first_name} ${root.last_name}`);
+          setRootPerson(root);
+          setSelectedPerson(root);
+        } else if (enhancedData.people.length > 0) {
+          // Fallback to first person if no root is found
+          console.log('No root person found, using first person as root');
+          setRootPerson(enhancedData.people[0]);
+          setSelectedPerson(enhancedData.people[0]);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading family data:", error);
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+  
+  // Update family members when root or generations change
+  useEffect(() => {
+    if (rootPerson && familyData) {
+      console.log(`Calculating family members for ${rootPerson.first_name} with ${maxGenerations} generations`);
+      const members = bfs(rootPerson, maxGenerations, familyData);
+      console.log(`Found ${members.length} family members`);
+      setFamilyMembers(members);
+    }
+  }, [rootPerson, maxGenerations, familyData]);
+  
+  // Search functionality
+  useEffect(() => {
+    if (!familyData || !searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    const results = familyData.people.filter(person => 
+      person.first_name.toLowerCase().includes(query) || 
+      person.last_name.toLowerCase().includes(query)
+    ).slice(0, 5);
+    
+    setSearchResults(results);
+  }, [searchQuery, familyData]);
+  
+  const handleSelectPerson = (person: Person): void => {
+    setSelectedPerson(person);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="mt-4 text-gray-700">Loading family tree data...</p>
         </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header with search and controls */}
+      <Header
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchResults={searchResults}
+        handleSelectPerson={handleSelectPerson}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        showDetails={showDetails}
+        setShowDetails={setShowDetails}
+        zoomLevel={zoomLevel}
+        setZoomLevel={setZoomLevel}
+        maxGenerations={maxGenerations}
+        setMaxGenerations={setMaxGenerations}
+      />
+      
+      {/* Main visualization area */}
+      <main className="flex-1 w-full h-full overflow-hidden relative">
+        {/* Tree visualization based on view mode */}
+        {viewMode === 'tree' ? (
+          <VerticalTreeView
+            familyMembers={familyMembers}
+            rootPerson={rootPerson}
+            selectedPerson={selectedPerson}
+            handleSelectPerson={handleSelectPerson}
+            zoomLevel={zoomLevel}
+          />
+        ) : (
+          <RadialTreeView
+            familyMembers={familyMembers}
+            rootPerson={rootPerson}
+            selectedPerson={selectedPerson}
+            handleSelectPerson={handleSelectPerson}
+          />
+        )}
+        
+        {/* Selected person details panel */}
+        {selectedPerson && familyData && (
+          <PersonDetails
+            selectedPerson={selectedPerson}
+            familyData={familyData}
+            setSelectedPerson={setSelectedPerson}
+            setRootPerson={setRootPerson}
+          />
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      
+      {/* SVG Definitions for animations and patterns */}
+      <svg width="0" height="0" className="hidden">
+        <defs>
+          <style>
+            {`
+              @keyframes pulse {
+                0% {
+                  opacity: 0.6;
+                  transform: scale(0.8);
+                }
+                50% {
+                  opacity: 1;
+                  transform: scale(1.1);
+                }
+                100% {
+                  opacity: 0.6;
+                  transform: scale(0.8);
+                }
+              }
+              
+              .pulse-animation {
+                animation: pulse 2s infinite;
+              }
+            `}
+          </style>
+        </defs>
+      </svg>
+    </div>
+  );
+};
+
+// Main component wrapper for the interactive family tree
+export default function InteractiveFamilyTreeVisualization() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <InteractiveTreeVisualization />
     </div>
   );
 }
