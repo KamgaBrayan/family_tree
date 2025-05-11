@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div className="flex items-center">
           <Users size={24} className="text-indigo-600 mr-2" />
-          <h1 className="text-xl font-semibold text-gray-800">Interactive Family Tree</h1>
+          <h1 className="text-xl font-semibold text-gray-800">Omni - Family Tree</h1>
         </div>
         
         <SearchBar 
