@@ -35,13 +35,8 @@ const RadialTreeGoJS: React.FC<RadialTreeGoJSProps> = ({
         radius: 180,
         spacing: 60,  // espace entre les nœuds
         nodeDiameterFormula: go.CircularLayout.Circular,
-        direction: go.CircularLayout.Clockwise,
-        arrangement: go.CircularLayout.ConstantDistance,
-        sorting: go.CircularLayout.Ascending,
         startAngle: 0,
-        sweepAngle: 360,
-        // Placer les parents en haut, les enfants en bas, les frères et sœurs sur les côtés
-        actualSpot: go.Spot.Center
+        sweepAngle: 360
       }),
       "undoManager.isEnabled": true,
       allowZoom: true,
@@ -393,18 +388,8 @@ const RadialTreeGoJS: React.FC<RadialTreeGoJSProps> = ({
           }
         }
         
-        // Ajouter des liens entre frères et sœurs
-        // Uniquement pour les frères et sœurs de la personne sélectionnée pour éviter l'encombrement
-        if (selectedPerson && 
-            ((person.father_id && person.father_id === selectedPerson.father_id) || 
-             (person.mother_id && person.mother_id === selectedPerson.mother_id)) &&
-            person.id !== selectedPerson.id) {
-          linkDataArray.push({
-            from: selectedPerson.id,
-            to: person.id,
-            relationship: 'sibling'
-          });
-        }
+        // Nous ne créons plus d'arêtes entre frères et sœurs selon la nouvelle spécification
+        // Les relations fraternelles seront implicites par les liens parent-enfant
       }
       
       console.log(`Created ${linkDataArray.length} links between nodes in radial view`);

@@ -18,6 +18,8 @@ export function bfs(
   const result: PersonWithRelationship[] = [];
   // Ensemble pour suivre les personnes déjà ajoutées
   const added = new Set<string>();
+  // Liste des IDs de personnes qui ont une relation directe avec la personne sélectionnée
+  const relatedIds = new Set<string>();
 
   // 1. Ajouter la personne sélectionnée
   const personWithRelation: PersonWithRelationship = {
@@ -27,6 +29,7 @@ export function bfs(
   };
   result.push(personWithRelation);
   added.add(rootPerson.id);
+  relatedIds.add(rootPerson.id);
 
   // 2. Ajouter les parents
   if (rootPerson.father_id) {
@@ -39,6 +42,7 @@ export function bfs(
         childId: rootPerson.id
       });
       added.add(father.id);
+      relatedIds.add(father.id);
     }
   }
 
@@ -52,6 +56,7 @@ export function bfs(
         childId: rootPerson.id
       });
       added.add(mother.id);
+      relatedIds.add(mother.id);
     }
   }
 
@@ -69,6 +74,7 @@ export function bfs(
         parentId: rootPerson.id
       });
       added.add(child.id);
+      relatedIds.add(child.id);
     }
   }
 
@@ -88,6 +94,7 @@ export function bfs(
           relationship: 'sibling'
         });
         added.add(sibling.id);
+        relatedIds.add(sibling.id);
       }
     }
   }
@@ -119,13 +126,15 @@ export function bfs(
         // Ajouter la référence du conjoint à la personne sélectionnée
         personWithRelation.spouse_id = spouse.id;
         added.add(spouse.id);
+        relatedIds.add(spouse.id);
       }
     }
   };
   
   findSpouse();
 
-  return result;
+  // Filtrer le résultat pour ne garder que les personnes directement liées à la personne sélectionnée
+  return result.filter(person => relatedIds.has(person.id));
 }
 
 /**

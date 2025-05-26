@@ -387,18 +387,8 @@ const FamilyTreeGoJS: React.FC<FamilyTreeGoJSProps> = ({
           }
         }
         
-        // Ajouter des liens entre frères et sœurs
-        // Uniquement pour les frères et sœurs de la personne sélectionnée pour éviter l'encombrement
-        if (selectedPerson && 
-            ((person.father_id && person.father_id === selectedPerson.father_id) || 
-             (person.mother_id && person.mother_id === selectedPerson.mother_id)) &&
-            person.id !== selectedPerson.id) {
-          linkDataArray.push({
-            from: selectedPerson.id,
-            to: person.id,
-            relationship: 'sibling'
-          });
-        }
+        // Nous ne créons plus d'arêtes entre frères et sœurs selon la nouvelle spécification
+        // Les relations fraternelles seront implicites par les liens parent-enfant
       }
       
       console.log(`Created ${linkDataArray.length} links between nodes`);
